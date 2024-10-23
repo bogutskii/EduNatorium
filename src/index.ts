@@ -1,13 +1,20 @@
 import { ApolloServer } from 'apollo-server';
 import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 import typeDefs from './typeDefs';
 import resolvers from './resolvers';
 
+dotenv.config();
+
 const startServer = async () => {
     try {
-        // MongoDB
-        await mongoose.connect('mongodb://localhost:27017/EduNatorium');
-        console.log('MongoDB connected');
+        // Использование переменной окружения для подключения к MongoDB
+        const mongoUri = process.env.MONGO_URI as string;
+        const port = process.env.PORT || 4000;
+
+        //MongoDB
+        await mongoose.connect(mongoUri);
+        console.log('MongoDB connected to Atlas');
 
         // Apollo Server
         const server = new ApolloServer({
@@ -16,12 +23,12 @@ const startServer = async () => {
             context: ({ req }) => ({ req }), // Для аутентификации
         });
 
-        // run
-        server.listen({ port: 4000 }).then(({ url }) => {
+        // Запуск сервера
+        server.listen({ port }).then(({ url }) => {
             console.log(`🚀 Server ready at ${url}`);
         });
     } catch (error) {
-        console.error(error);
+        console.error('MongoDB connection error:', error);
     }
 };
 
