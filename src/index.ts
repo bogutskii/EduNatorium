@@ -8,7 +8,6 @@ dotenv.config();
 
 const startServer = async () => {
     try {
-        // Использование переменной окружения для подключения к MongoDB
         const mongoUri = process.env.MONGO_URI as string;
         const port = process.env.PORT || 4000;
 
@@ -20,10 +19,9 @@ const startServer = async () => {
         const server = new ApolloServer({
             typeDefs,
             resolvers,
-            context: ({ req }) => ({ req }), // Для аутентификации
+            context: ({ req }) => ({ req }),
         });
 
-        // Запуск сервера
         server.listen({ port }).then(({ url }) => {
             console.log(`🚀 Server ready at ${url}`);
         });
