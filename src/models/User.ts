@@ -1,25 +1,13 @@
-import { Schema, model, Document } from 'mongoose';
-import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 
-interface IUser extends Document {
-    username: string;
-    email: string;
-    password: string;
-    role: string;
-}
-
-const userSchema = new Schema<IUser>({
-    username: { type: String, required: true },
-    email: { type: String, required: true },
+const userSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String, default: 'user' },
+    role: { type: String, enum: ['student', 'moderator', 'admin', 'editor'], default: 'student' },
+    createdAt: { type: Date, default: Date.now }
 });
 
-userSchema.pre<IUser>('save', async function() {
-    if (!this.isModified('password')) return;
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password!, salt);
-});
+const User = mongoose.model('User', userSchema);
 
-const User = model<IUser>('User', userSchema);
 export default User;

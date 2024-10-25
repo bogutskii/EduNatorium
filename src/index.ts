@@ -2,45 +2,40 @@ import { ApolloServer } from 'apollo-server-express';
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import cors from 'cors';
-import typeDefs from './typeDefs';
-import resolvers from './resolvers';
+import { resolvers } from './resolvers';
+import { typeDefs } from './typeDefs';
+import { checkAuth } from './auth/checkAuth';
 
 dotenv.config();
 
 const startServer = async () => {
-    try {
-        const mongoUri = process.env.MONGO_URI as string;
-        console.log('Mongo URI:', mongoUri);
-        const port = process.env.PORT || 4000;
+    const app = express();
 
-        await mongoose.connect(mongoUri);
-        console.log('MongoDB connected to Atlas');
+    const server = new ApolloServer({
+        typeDefs,
+        resolvers,
+        context: ({ req }) => {
+            const user = checkAuth(req);
+            return { user };
+        },
+    });
 
-        const app = express();
+    await server.start();
+    server.applyMiddleware({ app });
 
-        app.use(cors({
-            origin: 'http://localhost:3000',
-            credentials: true,
-        }));
-
-        const server = new ApolloServer({
-            typeDefs,
-            resolvers,
-            context: ({ req }) => ({ req }),
-        });
-
-        await server.start();
-        server.applyMiddleware({ app, path: '/graphql' });
-
-        app.listen(port, () => {
-            console.log(`🚀 Server ready at http://localhost:${port}${server.graphqlPath}`);
-        });
-    } catch (error) {
-        console.error('MongoDB connection error:', error);
+    const mongoUri = process.env.MONGO_URI;
+    if (!mongoUri) {
+        throw new Error('Mongo URI not defined in environment variables');
     }
+
+    await mongoose.connect(mongoUri);
+
+    const port = process.env.PORT || 4000;
+    app.listen({ port }, () =>
+        console.log(`Server ready at http://localhost:${port}${server.graphqlPath}`)
+    );
 };
 
-startServer().catch(err => {
-    console.error('Error starting server:', err);
+startServer().catch((err) => {
+    console.error('Error starting the server:', err);
 });

@@ -1,33 +1,46 @@
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import User from '../models/User';
-import Room from '../models/Room';
+import { AuthenticationError } from 'apollo-server-express';
 
-interface CreateUserArgs {
-    username: string;
-    email: string;
-    password: string;
-}
+const JWT_SECRET = process.env.JWT_SECRET;
 
-interface CreateRoomArgs {
-    name: string;
-}
-
-const resolvers = {
+export const resolvers = {
     Query: {
-        users: async () => await User.find(),
-        rooms: async () => await Room.find().populate('users'),
+        me: async (_: any, args: any, { user }: { user: any }) => {
+            if (!user) throw new AuthenticationError('You are not authenticated');
+            return await User.findById(user.id);
+        },
     },
     Mutation: {
-        createUser: async (_: any, { username, email, password }: CreateUserArgs) => {
-            const user = new User({ username, email, password });
+        register: async (_: any, { name, email, password }: { name: string, email: string, password: string }) => {
+            const existingUser = await User.findOne({ email });
+            if (existingUser) throw new Error('User already exists');
+
+            const hashedPassword = await bcrypt.hash(password, 10);
+            const user = new User({ name, email, password: hashedPassword });
             await user.save();
-            return user;
+
+            if (!JWT_SECRET) {
+                throw new Error('JWT_SECRET is not defined in environment variables');
+            }
+
+            const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET);
+            return { token, user };
         },
-        createRoom: async (_: any, { name }: CreateRoomArgs) => {
-            const room = new Room({ name });
-            await room.save();
-            return room;
+        login: async (_: any, { email, password }: { email: string, password: string }) => {
+            const user = await User.findOne({ email });
+            if (!user) throw new Error('User not found');
+
+            const valid = await bcrypt.compare(password, user.password);
+            if (!valid) throw new Error('Invalid password');
+
+            if (!JWT_SECRET) {
+                throw new Error('JWT_SECRET is not defined in environment variables');
+            }
+
+            const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET);
+            return { token, user };
         },
     },
 };
-
-export default resolvers;

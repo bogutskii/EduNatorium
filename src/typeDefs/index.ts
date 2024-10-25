@@ -1,28 +1,26 @@
-import { gql } from 'apollo-server';
+// typeDefs/index.ts
+import { gql } from 'apollo-server-express';
 
-const typeDefs = gql`
+export const typeDefs = gql`
     type User {
         id: ID!
-        username: String!
+        name: String!
         email: String!
         role: String!
+        createdAt: String!
     }
 
-    type Room {
-        id: ID!
-        name: String!
-        users: [User!]!
+    type AuthPayload {
+        token: String!
+        user: User!
     }
 
     type Query {
-        users: [User!]!
-        rooms: [Room!]!
+        me: User
     }
 
     type Mutation {
-        createUser(username: String!, email: String!, password: String!): User!
-        createRoom(name: String!): Room!
+        register(name: String!, email: String!, password: String!): AuthPayload!
+        login(email: String!, password: String!): AuthPayload!
     }
 `;
-
-export default typeDefs;
