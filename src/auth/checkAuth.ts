@@ -1,19 +1,22 @@
 import jwt from 'jsonwebtoken';
 import { AuthenticationError } from 'apollo-server-express';
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 
 export const checkAuth = (req: any) => {
-    const token = req.headers.authorization || '';
-    if (!token) throw new AuthenticationError('You must be logged in');
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        throw new AuthenticationError('Authorization header must be provided');
+    }
 
-    if (!JWT_SECRET) {
-        throw new Error('JWT_SECRET is not defined in environment variables');
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+        throw new AuthenticationError('Authorization token must be provided');
     }
 
     try {
-        const decoded = jwt.verify(token.replace('Bearer ', ''), JWT_SECRET);
-        return decoded;
+        const user = jwt.verify(token, JWT_SECRET);
+        return user;
     } catch (err) {
         throw new AuthenticationError('Invalid/Expired token');
     }

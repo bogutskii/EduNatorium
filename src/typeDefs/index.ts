@@ -7,20 +7,26 @@ export const typeDefs = gql`
         name: String!
         email: String!
         role: String!
+        password: String!
         createdAt: String!
     }
 
-    type AuthPayload {
-        token: String!
-        user: User!
+    type Post {
+        id: ID!
+        title: String!
+        content: String!
+        author: User!
+        createdAt: String!
     }
 
     type Query {
-        me: User
+        users: [User!]
+        user(id: ID!): User
+        posts: [Post!]
     }
 
     type Mutation {
-        register(name: String!, email: String!, password: String!): AuthPayload!
-        login(email: String!, password: String!): AuthPayload!
+        createUser(name: String!, email: String!, password: String!, role: String): User!
+        createPost(title: String!, content: String!, authorId: ID!): Post!
     }
 `;

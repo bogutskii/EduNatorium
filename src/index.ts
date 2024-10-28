@@ -4,7 +4,6 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { resolvers } from './resolvers';
 import { typeDefs } from './typeDefs';
-import { checkAuth } from './auth/checkAuth';
 
 dotenv.config();
 
@@ -14,10 +13,7 @@ const startServer = async () => {
     const server = new ApolloServer({
         typeDefs,
         resolvers,
-        context: ({ req }) => {
-            const user = checkAuth(req);
-            return { user };
-        },
+        introspection: true,
     });
 
     await server.start();
@@ -28,7 +24,13 @@ const startServer = async () => {
         throw new Error('Mongo URI not defined in environment variables');
     }
 
-    await mongoose.connect(mongoUri);
+    try {
+        await mongoose.connect(mongoUri);
+        console.log('Successfully connected to MongoDB');
+    } catch (error) {
+        console.error('Failed to connect to MongoDB:', error);
+        throw error;
+    }
 
     const port = process.env.PORT || 4000;
     app.listen({ port }, () =>
