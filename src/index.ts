@@ -4,8 +4,11 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { resolvers } from './resolvers';
 import { typeDefs } from './typeDefs';
+import jwt from 'jsonwebtoken';
 
 dotenv.config();
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 
 const startServer = async () => {
     const app = express();
@@ -14,6 +17,20 @@ const startServer = async () => {
         typeDefs,
         resolvers,
         introspection: true,
+        context: ({ req }) => {
+            const token = req.headers.authorization?.split(' ')[1];
+
+            if (token) {
+                try {
+                    const user = jwt.verify(token, JWT_SECRET);
+                    return { user };
+                } catch (err) {
+                    console.error('Invalid token:', err);
+                }
+            }
+
+            return {};
+        },
     });
 
     await server.start();

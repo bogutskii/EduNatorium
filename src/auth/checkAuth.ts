@@ -1,9 +1,14 @@
 import jwt from 'jsonwebtoken';
-import { AuthenticationError } from 'apollo-server-express';
+import {AuthenticationError} from 'apollo-server-express';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 
 export const checkAuth = (req: any) => {
+    const operationName = req.body.operationName;
+    if (operationName === 'register' || operationName === 'login') {
+        return {};
+    }
+
     const authHeader = req.headers.authorization;
     if (!authHeader) {
         throw new AuthenticationError('Authorization header must be provided');
@@ -15,8 +20,7 @@ export const checkAuth = (req: any) => {
     }
 
     try {
-        const user = jwt.verify(token, JWT_SECRET);
-        return user;
+        return jwt.verify(token, JWT_SECRET);
     } catch (err) {
         throw new AuthenticationError('Invalid/Expired token');
     }
