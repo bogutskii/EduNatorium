@@ -5,14 +5,18 @@ import dotenv from 'dotenv';
 import { resolvers } from './resolvers';
 import { typeDefs } from './typeDefs';
 import jwt from 'jsonwebtoken';
+import User from './models/User'; // Make sure to import the User model
 
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
-console.log('JWT_SECRET:', JWT_SECRET);
-
 if (!JWT_SECRET) {
-    throw new Error('JWT_SECRET is not defined in environment variables');
+    throw new Error("JWT_SECRET is not defined in environment variables");
+}
+
+const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) {
+    throw new Error("MONGO_URI is not defined in environment variables");
 }
 
 const startServer = async () => {
@@ -21,19 +25,18 @@ const startServer = async () => {
     const server = new ApolloServer({
         typeDefs,
         resolvers,
-        introspection: true,
-        context: ({ req }) => {
+        context: async ({ req }) => {
             const token = req.headers.authorization?.split(' ')[1];
             console.log('Server side token:', token);
             if (token) {
                 try {
-                    const user = jwt.verify(token, JWT_SECRET);
+                    const decodedToken: any = jwt.verify(token, JWT_SECRET);
+                    const user = await User.findById(decodedToken.id); // Now User is defined
                     return { user };
                 } catch (err) {
                     console.error('Invalid token:', err);
                 }
             }
-
             return {};
         },
     });
@@ -41,13 +44,8 @@ const startServer = async () => {
     await server.start();
     server.applyMiddleware({ app });
 
-    const mongoUri = process.env.MONGO_URI;
-    if (!mongoUri) {
-        throw new Error('Mongo URI not defined in environment variables');
-    }
-
     try {
-        await mongoose.connect(mongoUri);
+        await mongoose.connect(MONGO_URI);
         console.log('Successfully connected to MongoDB');
     } catch (error) {
         console.error('Failed to connect to MongoDB:', error);
