@@ -1,7 +1,10 @@
 import jwt from 'jsonwebtoken';
-import {AuthenticationError} from 'apollo-server-express';
+import { AuthenticationError } from 'apollo-server-express';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET is not defined in environment variables');
+}
 
 export const checkAuth = (req: any) => {
     const operationName = req.body.operationName;
@@ -20,6 +23,7 @@ export const checkAuth = (req: any) => {
     }
 
     try {
+        // Верификация токена с использованием JWT_SECRET
         return jwt.verify(token, JWT_SECRET);
     } catch (err) {
         throw new AuthenticationError('Invalid/Expired token');

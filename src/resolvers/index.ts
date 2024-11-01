@@ -1,57 +1,90 @@
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { AuthenticationError } from 'apollo-server-express';
 import User from '../models/User';
-import Post from '../models/Post';
+import Post from '../models/Post'; // Добавляем модель Post
+import { UserArgs, LoginArgs, UpdateUserArgs, Context } from '../typeDefs/types';
+import dotenv from 'dotenv';
+dotenv.config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
+
+const JWT_SECRET = process.env.JWT_SECRET;
+console.log('JWT_SECRET resolver:'+ JWT_SECRET);
+if (!JWT_SECRET) {
+    throw new Error("JWT_SECRET is not defined in environment variables");
+}
 
 export const resolvers = {
     Query: {
-        users: async (_: any, __: any, { user }: any) => {
+        me: (_: unknown, __: unknown, { user }: Context) => {
             if (!user) throw new AuthenticationError('You must be logged in');
-            return await User.find();
+            return User.findById(user.id);
         },
-        user: async (_: any, { id }: { id: string }, { user }: any) => {
+        users: (_: unknown, __: unknown, { user }: Context) => {
             if (!user) throw new AuthenticationError('You must be logged in');
-            return await User.findById(id);
+            return User.find();
         },
-        posts: async () => await Post.find().populate('author'),
+        user: (_: unknown, { id }: { id: string }, { user }: Context) => {
+            if (!user) throw new AuthenticationError('You must be logged in');
+            return User.findById(id);
+        },
+        posts: async () => {
+            return Post.find().populate('author');
+        },
     },
-
     Mutation: {
-        createUser: async (_: any, { name, email, password, role = 'student' }: { name: string; email: string; password: string; role?: string }) => {
+        createUser: async (_: unknown, { name, email, password, role = 'student' }: UserArgs) => {
+            const existingUser = await User.findOne({ email });
+            if (existingUser) throw new AuthenticationError('User with this email already exists');
+
+            const hashedPassword = await bcrypt.hash(password, 10);
+
             const user = new User({
                 name,
                 email,
-                password,
+                password: hashedPassword,
                 role,
                 createdAt: new Date().toISOString(),
             });
-            return await user.save();
-        },
-
-        login: async (_: any, { email, password }: { email: string; password: string }) => {
-            const user = await User.findOne({ email });
-            if (!user) {
-                throw new AuthenticationError('User not found');
-            }
-
-            if (user.password !== password) {
-                throw new AuthenticationError('Invalid credentials');
-            }
+            await user.save();
 
             const token = jwt.sign({ id: user._id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
-
             return { token, user };
         },
 
-        createPost: async (_: any, { title, content, authorId }: { title: string; content: string; authorId: string }) => {
-            const post = new Post({ title, content, author: authorId });
-            return await post.save();
-        },
-    },
+        login: async (_: unknown, { email, password }: LoginArgs) => {
+            const user = await User.findOne({ email });
+            if (!user) throw new AuthenticationError('User not found');
 
+            const valid = await bcrypt.compare(password, user.password);
+            if (!valid) throw new AuthenticationError('Invalid credentials');
+
+            const token = jwt.sign({ id: user._id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
+            console.log(token, JWT_SECRET);
+            return { token, user };
+        },
+
+        updateUser: (_: unknown, { id, bio, location, phoneNumber }: UpdateUserArgs, { user }: Context) => {
+            if (!user || user.id !== id) throw new AuthenticationError('Unauthorized');
+
+            return User.findByIdAndUpdate(
+                id,
+                { bio, location, phoneNumber },
+                { new: true }
+            );
+        },
+
+        createPost: async (_: unknown, { title, content, authorId }: { title: string, content: string, authorId: string }) => {
+            const post = new Post({
+                title,
+                content,
+                author: authorId,
+                createdAt: new Date().toISOString(),
+            });
+            return await post.save();
+        }
+    },
     Post: {
         author: async (post: any) => await User.findById(post.author),
-    },
+    }
 };

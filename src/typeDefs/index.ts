@@ -7,7 +7,9 @@ export const typeDefs = gql`
         name: String!
         email: String!
         role: String!
-        password: String!
+        bio: String
+        location: String
+        phoneNumber: String
         createdAt: String!
     }
 
@@ -15,7 +17,7 @@ export const typeDefs = gql`
         id: ID!
         title: String!
         content: String!
-        author: User!
+        author: User!     
         createdAt: String!
     }
 
@@ -25,14 +27,16 @@ export const typeDefs = gql`
     }
 
     type Query {
+        me: User
         users: [User!]
         user(id: ID!): User
-        posts: [Post!]
+        posts: [Post!]     
     }
 
     type Mutation {
-        createUser(name: String!, email: String!, password: String!, role: String): User!
-        createPost(title: String!, content: String!, authorId: ID!): Post!
-        login(email: String!, password: String!): AuthPayload! 
+        createUser(name: String!, email: String!, password: String!, role: String): AuthPayload!
+        login(email: String!, password: String!): AuthPayload!
+        updateUser(id: ID!, bio: String, location: String, phoneNumber: String): User!
+        createPost(title: String!, content: String!, authorId: ID!): Post!   # Mutation to create a new post
     }
 `;
